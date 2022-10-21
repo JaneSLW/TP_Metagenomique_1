@@ -71,22 +71,59 @@ def get_arguments():
     return parser.parse_args()
 
 def read_fasta(amplicon_file, minseqlen):
-    pass
+    with gzip.open(amplicon_file, 'rt') as file:
+        seq = ""
+        for line in file:
+            if not line.startswith('>'):
+                seq += line.strip()
+            elif line.startswith('>'):
+                if len(seq) >= minseqlen:
+                    yield seq
+                seq = ""
+        if len(seq) >= minseqlen:
+            yield seq
 
 
 def dereplication_fulllength(amplicon_file, minseqlen, mincount):
-    pass
+    read_occ = {}
+    for seq in read_fasta(amplicon_file, minseqlen):
+        if seq in read_occ: 
+            read_occ[seq] += 1
+        else:
+            read_occ[seq] = read_occ.get(seq, 0) + 1
+    for k, v in sorted(read_occ.items(), key=lambda item: item[1], reverse = True): 
+        if v >= mincount: 
+            yield [k, v]
+
 
 def get_identity(alignment_list):
     """Prend en une liste de séquences alignées au format ["SE-QUENCE1", "SE-QUENCE2"]
     Retourne le pourcentage d'identite entre les deux."""
-    pass
+    nb_id = 0
+    for i in range(len(alignment_list[0])):
+        if alignment_list[0][i] == alignment_list[1][i]:
+            nb_id += 1
+    return round(100 * (nb_id / len(alignment_list[0])), 2)
+
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    pass
+    seqs = list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
+    OTU = [seqs[0]]
+    for seq1 in seqs[1:]:
+        for seq2 in OTU:
+            seqlist = nw.global_align(seq1[0], seq2[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
+            if get_identity(seqlist) > 97:
+                break
+        OTU.append(seq1)
+    return OTU
+
 
 def write_OTU(OTU_list, output_file):
-    pass
+    with open(output_file, 'w') as file:
+        for i in range(0, len(OTU_list)):
+            file.write(f">OTU_{i+1} occurrence:{OTU_list[i][1]}\n")
+            file.write(textwrap.fill(OTU_list[i][0]) + "\n")
+
 
 #==============================================================
 # Main program
@@ -97,7 +134,8 @@ def main():
     """
     # Get arguments
     args = get_arguments()
-    # Votre programme ici
+    OTU_list = abundance_greedy_clustering(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
+    write_OTU(OTU_list, args.output_file)
 
 #==============================================================
 # Chimera removal section
