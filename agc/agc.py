@@ -10,6 +10,7 @@
 #    GNU General Public License for more details.
 #    A copy of the GNU General Public License is available at
 #    http://www.gnu.org/licenses/gpl-3.0.html
+#    python agc/agc.py -i data/amplicon.fasta.gz
 
 """OTU clustering"""
 
@@ -24,13 +25,13 @@ from collections import Counter
 # ftp://ftp.ncbi.nih.gov/blast/matrices/
 import nwalign3 as nw
 
-__author__ = "Your Name"
+__author__ = "Jane Schadtler-Law"
 __copyright__ = "Universite Paris Diderot"
-__credits__ = ["Your Name"]
+__credits__ = ["Jane Schadtler-Law"]
 __license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Your Name"
-__email__ = "your@email.fr"
+__maintainer__ = "Jane Schadtler-Law"
+__email__ = "jane.schadtler-law@etu.u-paris.fr"
 __status__ = "Developpement"
 
 
@@ -71,7 +72,7 @@ def get_arguments():
     return parser.parse_args()
 
 def read_fasta(amplicon_file, minseqlen):
-    with gzip.open(amplicon_file, 'rt') as file:
+    with gzip.open(amplicon_file, "rt") as file:
         seq = ""
         for line in file:
             if not line.startswith('>'):
@@ -107,14 +108,14 @@ def get_identity(alignment_list):
 
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    seqs = list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
-    OTU = [seqs[0]]
-    for seq1 in seqs[1:]:
+    seqs = dereplication_fulllength(amplicon_file, minseqlen, mincount)
+    OTU = [next(seqs)]
+    for seq in seqs:
         for seq2 in OTU:
-            seqlist = nw.global_align(seq1[0], seq2[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
+            seqlist = nw.global_align(seq[0], seq2[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
             if get_identity(seqlist) > 97:
                 break
-        OTU.append(seq1)
+        OTU.append(seq)
     return OTU
 
 
@@ -134,6 +135,7 @@ def main():
     """
     # Get arguments
     args = get_arguments()
+
     OTU_list = abundance_greedy_clustering(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
     write_OTU(OTU_list, args.output_file)
 
