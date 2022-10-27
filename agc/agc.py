@@ -111,11 +111,13 @@ def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, 
     seqs = dereplication_fulllength(amplicon_file, minseqlen, mincount)
     OTU = [next(seqs)]
     for seq in seqs:
+        flag = True
         for seq2 in OTU:
             seqlist = nw.global_align(seq[0], seq2[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
             if get_identity(seqlist) > 97:
-                break
-        OTU.append(seq)
+                flag = False
+        if flag:
+            OTU.append(seq)
     return OTU
 
 
